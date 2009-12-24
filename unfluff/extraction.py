@@ -1,45 +1,9 @@
-#!/usr/bin/env python
-
 # adapted from http://www.spicylogic.com/allenday/blog/2008/05/27/statistical-html-content-extraction/
 
-import sys
 from lxml import etree
-from scipy.special import gammaln
-from math import exp
 
-DEBUG = False
-
-def debug(s):
-	if not DEBUG: return
-	print >> sys.stderr, s
-
-def hypergeometric(*a):
-	## this should work:
-	#from scipy import stats
-	#return stats.hypergeom.pmf(*a)
-
-	## but it doesn't. this is a reasonable workaround, from http://bytes.com/topic/python/answers/439096-hypergeometric-distribution
-	return hypergeometric_gamma(*a)
-
-def lnchoose(n, m):
-	nf = gammaln(n + 1)
-	mf = gammaln(m + 1)
-	nmmnf = gammaln(n - m + 1)
-	return nf - (mf + nmmnf)
-
-def hypergeometric_gamma(k, n1, n2, t):
-	if t > n1 + n2:
-		t = n1 + n2
-	if k > n1 or k > t:
-		return 0
-	elif t > n2 and ((k + n2) < t):
-		return 0
-	else:
-		c1 = lnchoose(n1,k)
-		c2 = lnchoose(n2, t - k)
-		c3 = lnchoose(n1 + n2 ,t)
-	return exp(c1 + c2 - c3)
-
+from probability import hypergeometric
+from misc import debug
 
 class Extraction(object):
 	IGNORE = set(['head', 'iframe', 'script', 'style'])
@@ -125,44 +89,4 @@ class Extraction(object):
 				if attr in node.attrib:
 					del node.attrib[attr]
 		return root
-
-
-# convenience functions
-def url(u):
-	import urllib2
-	f = urllib2.urlopen(u)
-	try:
-		return Extraction(f.read())
-	finally: f.close()
-
-def file(u):
-	if u == '-':
-		return Extraction(sys.stdin.read())
-	f = open(u)
-	try:
-		return Extraction(f.read())
-	finally: f.close()
-
-def main(argv):
-	global DEBUG
-	from optparse import OptionParser
-	parser = OptionParser("%prog [options] file")
-	parser.add_option('-u', '--url', help='load url (instead of file)')
-	parser.add_option('-v', '--verbose', action='store_true', help='verbose messaging')
-	opts, args = parser.parse_args(argv)
-	if opts.verbose:
-		DEBUG = True
-	if opts.url or len(args) == 1:
-		if opts.url:
-			doc = url(opts.url)
-		else:
-			doc = file(args[0])
-		print doc
-	else:
-		parser.print_help()
-		return 1
-
-
-if __name__ == '__main__':
-	sys.exit(main(sys.argv[1:]))
 
