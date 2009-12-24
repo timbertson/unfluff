@@ -17,7 +17,7 @@ The command line tool can either take a file or a URL to extract. It prints the 
 
 or
 
-	unfluff -u 'http://some-website.com/interesting-article.html
+	unfluff -u 'http://some-website.com/interesting-article.html'
 
 The `unfluff` library has a few functions, which pretty much all do the same thing via different formats:
 
