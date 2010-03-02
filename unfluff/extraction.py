@@ -34,6 +34,7 @@ class Extraction(object):
 
 	def __init__(self, html_string):
 		self.minp = 1
+		self.stats = []
 		self.root = self.parse(html_string)
 		self.elemtotal, self.wordtotal = self.tally(self.root)
 		self.examine(self.root)
@@ -54,11 +55,14 @@ class Extraction(object):
 		p = hypergeometric( wordcount, self.elemtotal + self.wordtotal, self.wordtotal, elemcount + wordcount )
 		debug(repr(( wordcount, self.elemtotal + self.wordtotal, self.wordtotal, elemcount + wordcount )))
 		debug("p for %s = %s" % (self._str(node), p))
-	 
-		if p < self.minp and node.tag not in self.IGNORE:
-			text = self.cleanup(node)
-			self.minp = p
-			self.content = text
+
+		if node.tag not in self.IGNORE:
+			if elemcount > 0:
+				self.stats.append((node, (float(wordcount) / elemcount), p))
+			if p < self.minp:
+				text = self.cleanup(node)
+				self.minp = p
+				self.content = text
 
 		for child in list(node):
 			self.examine(child)

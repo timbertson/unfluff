@@ -4,6 +4,7 @@ import sys
 
 import misc
 from extraction import Extraction
+from graph import graph
 
 # convenience functions
 def from_url(u):
@@ -28,6 +29,7 @@ def main():
 	parser = OptionParser("%prog [options] file")
 	parser.add_option('-u', '--url', help='load url (instead of file)')
 	parser.add_option('-v', '--verbose', action='store_true', help='verbose messaging')
+	parser.add_option('-g', '--graph', action='store_true', help='pretty graphs')
 	opts, args = parser.parse_args()
 	if opts.verbose:
 		misc.set_debug(True)
@@ -39,7 +41,9 @@ def main():
 	else:
 		doc = from_file(args[0])
 	print doc
-
+	
+	if opts.graph:
+		graph(doc.stats)
 
 if __name__ == '__main__':
 	sys.exit(main())
