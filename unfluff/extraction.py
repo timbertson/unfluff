@@ -58,7 +58,12 @@ class Extraction(object):
 
 		if node.tag not in self.IGNORE:
 			if elemcount > 0:
-				self.stats.append((node, (float(wordcount) / elemcount), p))
+				self.stats.append({
+					node: node,
+					words: wordcount,
+					words_per_tag: (float(wordcount) / elemcount),
+					p: p
+				})
 			if p < self.minp:
 				text = self.cleanup(node)
 				self.minp = p
