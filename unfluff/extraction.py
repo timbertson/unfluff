@@ -55,14 +55,16 @@ class Extraction(object):
 		p = hypergeometric( wordcount, self.elemtotal + self.wordtotal, self.wordtotal, elemcount + wordcount )
 		debug(repr(( wordcount, self.elemtotal + self.wordtotal, self.wordtotal, elemcount + wordcount )))
 		debug("p for %s = %s" % (self._str(node), p))
+		#p = float(pow(wordcount, 1.5)) / elemcount
 
 		if node.tag not in self.IGNORE:
 			if elemcount > 0:
 				self.stats.append({
-					node: node,
-					words: wordcount,
-					words_per_tag: (float(wordcount) / elemcount),
-					p: p
+					'node': node,
+					'words': wordcount,
+					'elems': elemcount,
+					'words_per_tag': (float(wordcount) / elemcount),
+					'p': p
 				})
 			if p < self.minp:
 				text = self.cleanup(node)
