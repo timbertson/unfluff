@@ -31,12 +31,13 @@ class Extraction(object):
 	}
 	DEFAULT_WEIGHT = 2
 	REMOVE_ATTRS = set(['style'])
+	MAX_PURITY = 50
 
 	def __init__(self, html_string):
-		self.minp = 1
+		self.maxp = 0
 		self.stats = []
 		self.root = self.parse(html_string)
-		self.elemtotal, self.wordtotal = self.tally(self.root)
+		self.elemtotal, self.wordtotal, self.depthtotal = self.tally(self.root)
 		self.examine(self.root)
 	
 	def __str__(self):
@@ -48,14 +49,26 @@ class Extraction(object):
 		return etree.HTML(file, parser)
 	 
 	def examine(self, node):
-		elemcount, wordcount = self.tally(node);
+		elemcount, wordcount, depth = self.tally(node);
 
 		total_entities = self.elemtotal + self.wordtotal
 		node_entities = wordcount + elemcount
-		p = hypergeometric( wordcount, self.elemtotal + self.wordtotal, self.wordtotal, elemcount + wordcount )
-		debug(repr(( wordcount, self.elemtotal + self.wordtotal, self.wordtotal, elemcount + wordcount )))
-		debug("p for %s = %s" % (self._str(node), p))
-		#p = float(pow(wordcount, 1.5)) / elemcount
+		
+		if node_entities == 0:
+			return
+
+		# 0-1 with 0 being the whole document and 1 being a single node
+		shallowness = (1 - (self.depthtotal - depth))
+
+		# 0-1 with 0 being no volume, 1 being entire volume (capped at 500 entities)
+		volume_proportion = min(float(total_entities) / min(node_entities, 500), 1)
+
+		purity = float(wordcount) / max(elemcount, 1)
+		# what is max_purity?
+		purity = min((float(purity) / self.MAX_PURITY), 1)
+
+		#debug(repr(( wordcount, self.elemtotal + self.wordtotal, self.wordtotal, elemcount + wordcount )))
+		p = shallowness + volume_proportion + purity
 
 		if node.tag not in self.IGNORE:
 			if elemcount > 0:
@@ -66,28 +79,31 @@ class Extraction(object):
 					'words_per_tag': (float(wordcount) / elemcount),
 					'p': p
 				})
-			if p < self.minp:
+			if p > self.maxp:
 				text = self.cleanup(node)
-				self.minp = p
+				self.maxp = p
 				self.content = text
 
 		for child in list(node):
 			self.examine(child)
 	
-	def tally(self, node, elemcount = 0, wordcount = 0):
+	def tally(self, node, elemcount = 0, wordcount = 0, thisdepth=0):
 		"""return elemcount, wordcount for a given node and its (recursive) subtree"""
 		if node.tag not in self.IGNORE:
 			words = (node.text or '').split()
 			if len(words) > 1:
 				wordcount += len(words)
 
+		tagdepth = 0
 		for child in list(node):
 			elemcount += self.ELEMENT_WEIGHTS.get(child.tag, self.DEFAULT_WEIGHT)
 			if child.tag not in self.IGNORE:
-				elemcount, wordcount = self.tally(child, elemcount, wordcount)
+				elemcount, wordcount, child_tagdepth = self.tally(child, elemcount, wordcount, thisdepth + 1)
+				tagdepth = max(tagdepth, thisdepth - child_tagdepth)
+				tagdepth = thisdepth - tagdepth
 		
-		debug("element %s has %s nodes and %s words" % (self._str(node), elemcount, wordcount))
-		return max(elemcount,0), wordcount
+		debug("element %s has %s nodes, %s depth and %s words" % (self._str(node), elemcount, tagdepth, wordcount))
+		return max(elemcount,0), wordcount, tagdepth
 		
 	
 	def _str(self, elem):
