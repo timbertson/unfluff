@@ -1,12 +1,26 @@
-import Gnuplot
+import pyx
 import readline
 import sys
 import math
 
 def graph(stats, debug=0):
-	g = Gnuplot.Gnuplot(debug=debug)
-	g.title('node breakdown') # (optional)
-	g('set data style linespoints') # give gnuplot an arbitrary command
+	g = pyx.graph.graphxy(width=24, height=6, x=pyx.graph.axis.bar())
+	lines = []
+	for stat in stats:
+		line = (stat['volume'], stat['volume'] + stat['purity'], stat['volume'] + stat['purity'] + stat['shallowness'])
+		lines.append(line)
+		#print repr(line)
+		#break
+	data = pyx.graph.data.list(lines, xname=0, y=1, b=2, c=3)
+	g.plot(data,
+		[
+			pyx.graph.style.bar([pyx.color.rgb.green]),
+			pyx.graph.style.stackedbarpos("b"),
+			pyx.graph.style.bar([pyx.color.rgb.blue]),
+			pyx.graph.style.stackedbarpos("c"),
+			pyx.graph.style.bar([pyx.color.rgb.red]),
+		])
+	g.writePDFfile("stacked")
 
 	def line(*parts, **kw):
 		line = []
@@ -17,32 +31,3 @@ def graph(stats, debug=0):
 			line.append((i, mod(*st_elems)))
 			i += 1
 		return line
-
-	def power_ratio(p, scale=1.0):
-		return lambda words, elems: (scale * pow(words, p)) / (elems or 1)
-
-	while True:
-		try:
-			print >> sys.stderr, "\nenter formula (using <words, elems>):"
-			input = raw_input()
-		except EOFError: break
-		try:
-			#factor, scale = map(float, input.split())
-			g.plot(
-				line('words'),
-				#line('words', 'elems', mod=power_ratio(factor, scale=scale))
-				line('words', 'elems', mod=eval("lambda words, elems: %s" % input))
-			)
-		except Exception, e:
-			print e
-			pass
-
-import time
-def graph_awesomeness_graphs(func):
-	for plot_info in [getattr(func, x) for x in ('expected_volume_ratio', 'volume_accuracy_confidence', 'purity_importance')]:
-		plot = Gnuplot.Gnuplot(debug=1)
-		plot.set_range('xrange', plot_info['xrange'])
-		plot.set_range('yrange', plot_info['yrange'])
-		plot.title(plot_info['label'])
-		plot.plot(plot_info['formula'])
-		time.sleep(2 * 1000)
