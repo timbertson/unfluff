@@ -36,25 +36,13 @@ def graph(stats, debug=0):
 		except Exception, e:
 			print e
 			pass
-	#g.plot(
-	#	line('words', mod=lambda x: 0.1 * x),
-	#	#line('words_per_tag'),
-	#	line('words', 'elems', mod=power_ratio(2, scale=0.5)),
-	#	#line('words', 'elems', mod=power_ratio(1.4, scale=0.7)),
-	#	#line('words', 'elems', mod=power_ratio(1.5, scale=0.5)),
-	#	#pick(stats, 'words_per_tag'),
-	#	#multiply_y(0.02, pick(stats, 'words')),
-	#	#multiply_y(60, pick(stats, 'p'))
-	#)
-	#g.hardcopy(filename="graph.ps")
-	#raw_input('\n')
 
-def graph_awesomeness_graphs(awesomeness_func):
-	for plot_info in [func[x] for x in ('expected_volume_ratio', 'purity_importance']:
+import time
+def graph_awesomeness_graphs(func):
+	for plot_info in [getattr(func, x) for x in ('expected_volume_ratio', 'volume_accuracy_confidence', 'purity_importance')]:
 		plot = Gnuplot.Gnuplot(debug=1)
 		plot.set_range('xrange', plot_info['xrange'])
 		plot.set_range('yrange', plot_info['yrange'])
 		plot.title(plot_info['label'])
 		plot.plot(plot_info['formula'])
-	
-	raw_input('press enter to continue)
+		time.sleep(2 * 1000)
