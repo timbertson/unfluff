@@ -4,7 +4,7 @@ import sys
 import math
 
 def graph(stats, debug=0):
-	g = pyx.graph.graphxy(width=24, height=6, x=pyx.graph.axis.bar())
+	g = pyx.graph.graphxy(width=34, height=6, x=pyx.graph.axis.bar())
 	lines = []
 	for stat in stats:
 		line = (stat['volume'], stat['volume'] + stat['purity'], stat['volume'] + stat['purity'] + stat['shallowness'])

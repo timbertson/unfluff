@@ -1,6 +1,8 @@
 # adapted from http://www.spicylogic.com/allenday/blog/2008/05/27/statistical-html-content-extraction/
 
 from lxml import etree
+from math import log
+import re
 
 from probability import hypergeometric
 from misc import debug
@@ -9,37 +11,41 @@ class Extraction(object):
 	IGNORE = set(['head', 'iframe', 'script', 'style'])
 	ELEMENT_WEIGHTS = {
 		# we like these
-		'h1': -1,
-		'h2': -1,
-		'blockquote': -1,
+		'h1': -0.5,
+		'h2': -0.5,
+		'blockquote': -0.5,
 		'pre': -1,
-		# don't penalize these "content" tags
-		'a': 0,
+		'a': 0.8,
 		'b': 0,
-		'br': 0,
-		'div': 0,
+		'br': 0.1,
+		'div': 0.5,
 		'em': 0,
 		'h3': 0,
 		'h4': 0,
 		'i':0,
-		'p':0,
-		'span':0,
+		'p':0.1,
+		'span':0.5,
 		'strong':0,
 		# discourage things that are often found in fluff:
-		'li': 3,
-		'form':1,
+		'li': 2,
+		'form':3,
 	}
 	DEFAULT_WEIGHT = 2
 	REMOVE_ATTRS = set(['style'])
-	MAX_PURITY = 50
+	BLACKLIST_ATTRS = {
+		'class': re.compile(r'\bcomment', re.I),
+		'id': re.compile(r'\bcomment', re.I),
+	}
+	GOOD_CLASSES = set([re.compile('\bpost\b', re.I), re.compile('\bcontent\b', re.I)])
+	MAX_PURITY = 80
 
 	def __init__(self, html_string):
 		self.maxp = 0
 		self.stats = []
 		self.root = self.parse(html_string)
+		self.cleanup(self.root)
 		self.content = self.root
 		self.elemtotal, self.wordtotal, self.depthtotal = self.tally(self.root)
-		print self.depthtotal
 		self.examine(self.root)
 	
 	def __str__(self):
@@ -52,39 +58,31 @@ class Extraction(object):
 	 
 	def examine(self, node):
 		elemcount, wordcount, depth = self.tally(node);
-
-		total_entities = self.elemtotal + self.wordtotal
-		node_entities = wordcount + elemcount
-
-		if not (wordcount > 0 and elemcount > 0 and depth > 0):
-			return
-		
-		if node_entities == 0:
-			return
+		#if elemcount == 0 or wordcount == 0:
+		#	return
 
 		# 0-1 with 0 being the whole document and 1 being a single node
 		shallowness = (1 - (float(depth) / self.depthtotal))
 
-		# 0-1 with 0 being no volume, 1 being entire volume (capped at 500 entities)
-		#volume_proportion = min(float(total_entities) / min(node_entities, 500), 1)
-		volume_proportion = min(node_entities / float(min(total_entities, 1000)), 1)
-		volume_proportion = min(volume_proportion, 0.75)
+		# 0-1 with 0 being no volume, 1 being entire volume (capped at 1000 words)
+		volume_proportion = min(float(min(wordcount, 1000)) / self.wordtotal, 1)
+		volume_proportion = log((8*volume_proportion) + 1, 2) / 3
 
 		purity = float(wordcount) / max(elemcount, 1)
-		# what is max_purity? I guess anything above 50:1 is a bit mad...
+		# what is max_purity? I guess anything above 20:1 is a bit mad...
 		purity = min((float(purity) / self.MAX_PURITY), 1)
 
 
 		# now scale 'em for importance:
 		#volume_proportion = ((volume_proportion - 1) * 0.25) + 1
-		volume_proportion *= 5
-		purity *= 3
+		volume_proportion *= 10
+		purity *= 2
 		shallowness *= 1
 
 		p = shallowness + volume_proportion + purity
 
 		if node.tag not in self.IGNORE:
-			if elemcount > 0:
+			if elemcount > 0 and p > (0.5 * self.maxp):
 				self.stats.append({
 					'node': node,
 					'volume': volume_proportion,
@@ -94,9 +92,8 @@ class Extraction(object):
 					'p': p
 				})
 			if p > self.maxp:
-				text = self.cleanup(node)
 				self.maxp = p
-				self.content = text
+				self.content = node
 
 		for child in list(node):
 			self.examine(child)
@@ -108,6 +105,10 @@ class Extraction(object):
 			if len(words) > 1:
 				wordcount += len(words)
 
+		cls = node.attrib.get('class', None)
+		if cls:
+			if any((matcher.search(cls) for matcher in self.GOOD_CLASSES)):
+				worcount *= 1.5
 		tagdepth = 0
 		for child in list(node):
 			elemcount += self.ELEMENT_WEIGHTS.get(child.tag, self.DEFAULT_WEIGHT)
@@ -124,9 +125,13 @@ class Extraction(object):
 
 	def cleanup(self, root):
 		for node in root.getiterator():
-			[node.remove(child) for child in node if child.tag in self.IGNORE]
 			for attr in self.REMOVE_ATTRS:
 				if attr in node.attrib:
 					del node.attrib[attr]
+			for attr, val in self.BLACKLIST_ATTRS.items():
+				if attr in node.attrib and val.search(node.attrib[attr]):
+					del node
+					break
 		return root
 
+import sys
