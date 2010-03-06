@@ -30,7 +30,7 @@ class Extraction(object):
 		'li': 2,
 		'form':3,
 	}
-	DEFAULT_WEIGHT = 2
+	DEFAULT_WEIGHT = 1
 	REMOVE_ATTRS = set(['style'])
 	BLACKLIST_ATTRS = {
 		'class': re.compile(r'\bcomment', re.I),
@@ -75,7 +75,7 @@ class Extraction(object):
 
 		# now scale 'em for importance:
 		#volume_proportion = ((volume_proportion - 1) * 0.25) + 1
-		volume_proportion *= 10
+		volume_proportion *= 5
 		purity *= 2
 		shallowness *= 1
 
