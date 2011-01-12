@@ -3,7 +3,7 @@
 from setuptools import *
 setup(
 	name='unfluff',
-	version='0.1',
+	version='0.2',
 	author_email='tim3d.junk+unfluff@gmail.com',
 	author='Tim Cuthbertson',
 	url='http://github.com/gfxmonk/unfluff',
